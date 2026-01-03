@@ -1,3 +1,12 @@
+from django.shortcuts import render, redirect
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Q, Sum
+from .forms import LoginForm, RegistrationForm
+from .models import UserProfile, Product, Order
+from .product_form import ProductForm
+
 @login_required
 def admin_summary(request):
 	user = request.user
@@ -51,15 +60,6 @@ def buyer_dashboard(request):
 		'query': query,
 	})
 
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
-from django.contrib import messages
-from .forms import LoginForm, RegistrationForm
-from .models import UserProfile, Product, Order
-from .product_form import ProductForm
-
-from django.contrib.auth.decorators import login_required
-
 @login_required
 def farmer_dashboard(request):
 	user = request.user
@@ -71,7 +71,7 @@ def farmer_dashboard(request):
 	products = Product.objects.filter(farmer=user)
 	total_sales = {}
 	for product in products:
-		total_sales[product.id] = Order.objects.filter(product=product).aggregate(models.Sum('quantity'))['quantity__sum'] or 0
+		total_sales[product.id] = Order.objects.filter(product=product).aggregate(Sum('quantity'))['quantity__sum'] or 0
 
 	if request.method == 'POST':
 		form = ProductForm(request.POST, request.FILES)
@@ -109,7 +109,7 @@ def unified_login(request):
 				elif role == 'Buyer':
 					return redirect('buyer_dashboard')
 				elif role == 'Admin':
-					return redirect('admin_dashboard')
+					return redirect('admin_summary')
 				else:
 					messages.error(request, 'Invalid role.')
 			else:
@@ -128,3 +128,15 @@ def register(request):
 	else:
 		form = RegistrationForm()
 	return render(request, 'register.html', {'form': form})
+
+def home(request):
+	if request.user.is_authenticated:
+		if hasattr(request.user, 'userprofile'):
+			role = request.user.userprofile.role
+			if role == 'Farmer':
+				return redirect('farmer_dashboard')
+			elif role == 'Buyer':
+				return redirect('buyer_dashboard')
+			elif role == 'Admin':
+				return redirect('admin_summary')
+	return redirect('login')
