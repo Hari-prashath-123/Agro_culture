@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="notifications-page">
+    <a href="{% if user_role == 'Farmer' %}{% url 'farmer_dashboard' %}{% elif user_role == 'Buyer' %}{% url 'buyer_dashboard' %}{% elif user_role == 'Admin' %}{% url 'admin_summary' %}{% else %}{% url 'home' %}{% endif %}" class="file-upload-btn" style="margin-bottom:20px;display:inline-block;">&larr; Back to Dashboard</a>
+    <div class="notifications-header">
+        <h2>Notifications</h2>
+        {% if notifications %}
+            <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="mark-read-btn">Mark All as Read</button>
+            </form>
+        {% endif %}
+    </div>
+    
+    <div class="notifications-list">
+        {% for notification in notifications %}
+        <div class="notification-item {% if not notification.is_read %}unread{% endif %}">
+            <div class="notification-icon">
+                {% if notification.is_read %}✓{% else %}🔔{% endif %}
+            </div>
+            <div class="notification-content">
+                <p class="notification-message">{{ notification.message }}</p>
+                <p class="notification-time">{{ notification.created_date|date:"M d, Y - h:i A" }}</p>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-notifications">
+            <p>No notifications yet</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

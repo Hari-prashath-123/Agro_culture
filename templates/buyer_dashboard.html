@@ -1,18 +1,65 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 {% block content %}
 <a href="{% url 'order_history' %}" class="file-upload-btn" style="margin-bottom:20px;display:inline-block;">View Your Order History</a>
 <h2>Marketplace</h2>
-<form method="get" class="search-bar">
-    <input type="text" name="q" placeholder="Search products by name..." value="{{ query }}">
-    <button type="submit">Search</button>
-    {% if query %}
-        <a href="?" class="file-upload-btn" style="margin-left:10px;">Clear</a>
-    {% endif %}
+<form method="get" class="search-filter-form">
+    <div class="filter-row">
+        <div class="filter-group">
+            <label for="searchInput">Search:</label>
+            <input type="text" id="searchInput" name="q" placeholder="Search products..." value="{{ query }}">
+        </div>
+        
+        <div class="filter-group">
+            <label for="categoryFilter">Category:</label>
+            <select id="categoryFilter" name="category">
+                <option value="">All Categories</option>
+                {% for value, label in category_choices %}
+                    <option value="{{ value }}" {% if category_filter == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <div class="filter-row">
+        <div class="filter-group price-range">
+            <label>Price Range: ₹<span id="minPriceDisplay">{{ min_price|default:"0" }}</span> - ₹<span id="maxPriceDisplay">{{ max_price|default:"10000" }}</span></label>
+            <div class="price-inputs">
+                <input type="number" id="minPrice" name="min_price" placeholder="Min" value="{{ min_price }}" min="0" step="10">
+                <span>-</span>
+                <input type="number" id="maxPrice" name="max_price" placeholder="Max" value="{{ max_price }}" min="0" step="10">
+            </div>
+        </div>
+    </div>
+    
+    <div class="filter-actions">
+        <button type="submit" class="filter-btn">Apply Filters</button>
+        {% if query or category_filter or min_price or max_price %}
+            <a href="?" class="clear-btn">Clear All</a>
+        {% endif %}
+    </div>
 </form>
 <div class="marketplace-grid">
     {% for product in products %}
     <div class="market-card">
+        <button class="wishlist-btn" data-product-id="{{ product.id }}" data-wishlisted="{% if product.id in wishlist_ids %}true{% else %}false{% endif %}">
+            <span class="heart-icon">{% if product.id in wishlist_ids %}❤{% else %}🤍{% endif %}</span>
+        </button>
         <h4>{{ product.name }}</h4>
+        
+        <!-- Average Rating Display -->
+        <div class="rating-display">
+            <span class="stars" data-product-id="{{ product.id }}">
+                {% with rating=product_ratings|get_item:product.id %}
+                    {% if rating > 0 %}
+                        ⭐ {{ rating }}/5
+                    {% else %}
+                        No reviews yet
+                    {% endif %}
+                {% endwith %}
+            </span>
+        </div>
+        
         <p>Category: {{ product.category }}</p>
         <p>Price: ₹{{ product.price }}</p>
         <p>Stock: {{ product.quantity }}</p>
@@ -26,10 +73,53 @@
             <input type="number" name="quantity" min="1" max="{{ product.quantity }}" value="1" style="width:60px;">
             <button type="submit" {% if product.quantity == 0 %}disabled{% endif %}>Buy Now</button>
         </form>
+        
+        <!-- Review Section (only for purchased products) -->
+        {% if product.id in purchased_product_ids %}
+            <div class="review-section">
+                {% if product.id not in reviewed_product_ids %}
+                    <button class="review-btn" onclick="openReviewModal({{ product.id }}, '{{ product.name }}')">Leave a Review</button>
+                {% else %}
+                    <p class="review-status">✓ You've reviewed this product</p>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
     {% empty %}
     <p>No products available.</p>
     {% endfor %}
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeReviewModal()">&times;</span>
+        <h3>Leave a Review</h3>
+        <p id="reviewProductName"></p>
+        <form id="reviewForm">
+            <input type="hidden" id="reviewProductId" name="product_id">
+            <div class="form-group">
+                <label>Rating:</label>
+                <div class="star-rating">
+                    <input type="radio" id="star5" name="rating" value="5" required>
+                    <label for="star5">☆</label>
+                    <input type="radio" id="star4" name="rating" value="4">
+                    <label for="star4">☆</label>
+                    <input type="radio" id="star3" name="rating" value="3">
+                    <label for="star3">☆</label>
+                    <input type="radio" id="star2" name="rating" value="2">
+                    <label for="star2">☆</label>
+                    <input type="radio" id="star1" name="rating" value="1">
+                    <label for="star1">☆</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="comment">Comment (optional):</label>
+                <textarea id="comment" name="comment" rows="4" placeholder="Share your experience..."></textarea>
+            </div>
+            <button type="submit" class="submit-review-btn">Submit Review</button>
+        </form>
+    </div>
 </div>
 {% if messages %}
     <ul>
@@ -38,4 +128,150 @@
     {% endfor %}
     </ul>
 {% endif %}
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+// Update price display labels
+const minPriceInput = document.getElementById('minPrice');
+const maxPriceInput = document.getElementById('maxPrice');
+const minPriceDisplay = document.getElementById('minPriceDisplay');
+const maxPriceDisplay = document.getElementById('maxPriceDisplay');
+
+if (minPriceInput && minPriceDisplay) {
+    minPriceInput.addEventListener('input', function() {
+        minPriceDisplay.textContent = this.value || '0';
+    });
+}
+
+if (maxPriceInput && maxPriceDisplay) {
+    maxPriceInput.addEventListener('input', function() {
+        maxPriceDisplay.textContent = this.value || '10000';
+    });
+}
+
+// Wishlist functionality
+document.querySelectorAll('.wishlist-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+        e.preventDefault();
+        const productId = this.getAttribute('data-product-id');
+        const isWishlisted = this.getAttribute('data-wishlisted') === 'true';
+        const heartIcon = this.querySelector('.heart-icon');
+        
+        fetch(`/toggle_wishlist/${productId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if (data.action === 'added') {
+                    heartIcon.textContent = '❤';
+                    this.setAttribute('data-wishlisted', 'true');
+                } else {
+                    heartIcon.textContent = '🤍';
+                    this.setAttribute('data-wishlisted', 'false');
+                }
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+});
+
+// Review modal functions
+function openReviewModal(productId, productName) {
+    document.getElementById('reviewModal').style.display = 'block';
+    document.getElementById('reviewProductId').value = productId;
+    document.getElementById('reviewProductName').textContent = `Review: ${productName}`;
+}
+
+function closeReviewModal() {
+    document.getElementById('reviewModal').style.display = 'none';
+    document.getElementById('reviewForm').reset();
+    // Reset all stars to outline
+    document.querySelectorAll('.star-rating label').forEach(label => {
+        label.textContent = '☆';
+    });
+}
+
+// Handle star rating selection
+document.querySelectorAll('.star-rating input[type="radio"]').forEach(input => {
+    input.addEventListener('change', function() {
+        const rating = parseInt(this.value);
+        const labels = this.parentElement.querySelectorAll('label');
+        
+        // Reset all stars to outline
+        labels.forEach(label => {
+            label.textContent = '☆';
+        });
+        
+        // Fill stars up to selected rating (remembering reverse order)
+        labels.forEach((label, index) => {
+            const starValue = 5 - index; // Because flex-direction is row-reverse
+            if (starValue <= rating) {
+                label.textContent = '★';
+            }
+        });
+    });
+});
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('reviewModal');
+    if (event.target === modal) {
+        closeReviewModal();
+    }
+}
+
+// Handle review form submission
+document.getElementById('reviewForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const productId = document.getElementById('reviewProductId').value;
+    const formData = new FormData(this);
+    
+    fetch(`/submit_review/${productId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closeReviewModal();
+            // Update the rating display
+            const ratingDisplay = document.querySelector(`.stars[data-product-id="${productId}"]`);
+            if (ratingDisplay) {
+                ratingDisplay.textContent = `⭐ ${data.avg_rating}/5`;
+            }
+            // Reload page to update review button
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+});
+</script>
 {% endblock %}

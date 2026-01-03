@@ -4,6 +4,25 @@
 <h2>Your Products</h2>
 <div class="dashboard">
     <a href="{% url 'add_product' %}" class="file-upload-btn" style="margin-bottom:20px;display:inline-block;">Add New Product</a>
+    
+    <!-- Business Summary Section -->
+    <div class="business-summary">
+        <h3>Business Summary</h3>
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h4>Total Products Sold</h4>
+                <p class="summary-value">{{ total_products_sold }}</p>
+            </div>
+            <div class="summary-card">
+                <h4>Total Revenue</h4>
+                <p class="summary-value">₹{{ total_revenue }}</p>
+            </div>
+            <div class="summary-card">
+                <h4>Top Selling Category</h4>
+                <p class="summary-value">{{ top_category }}</p>
+            </div>
+        </div>
+    </div>
     <div class="product-cards">
         {% for product in products %}
         <div class="card">
@@ -20,5 +39,99 @@
         <p>No products uploaded yet.</p>
         {% endfor %}
     </div>
+    
+    <!-- Orders Management Section -->
+    <div class="orders-management">
+        <h3>Recent Orders</h3>
+        <div class="orders-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Product</th>
+                        <th>Buyer</th>
+                        <th>Quantity</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>#{{ order.id }}</td>
+                        <td>{{ order.product.name }}</td>
+                        <td>{{ order.buyer.username }}</td>
+                        <td>{{ order.quantity }}</td>
+                        <td>{{ order.order_date|date:"M d, Y" }}</td>
+                        <td><span class="order-status status-{{ order.status|lower }}" id="status-{{ order.id }}">{{ order.status }}</span></td>
+                        <td>
+                            <select class="status-select" data-order-id="{{ order.id }}">
+                                {% for value, label in order.STATUS_CHOICES %}
+                                    <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="update-status-btn" data-order-id="{{ order.id }}">Update</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" style="text-align:center; padding:15px;">No orders yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+// Handle order status updates
+document.querySelectorAll('.update-status-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const orderId = this.getAttribute('data-order-id');
+        const selectElement = document.querySelector(`.status-select[data-order-id="${orderId}"]`);
+        const newStatus = selectElement.value;
+        
+        const formData = new FormData();
+        formData.append('status', newStatus);
+        
+        fetch(`/update_order_status/${orderId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                // Update status badge
+                const statusBadge = document.getElementById(`status-${orderId}`);
+                statusBadge.textContent = data.status;
+                statusBadge.className = `order-status status-${data.status.toLowerCase()}`;
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+});
+</script>
 {% endblock %}

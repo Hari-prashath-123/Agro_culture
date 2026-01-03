@@ -57,10 +57,60 @@ class Product(models.Model):
 		return self.name
 
 class Order(models.Model):
+	STATUS_CHOICES = [
+		('Pending', 'Pending'),
+		('Shipped', 'Shipped'),
+		('Delivered', 'Delivered'),
+	]
 	buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
 	product = models.ForeignKey(Product, on_delete=models.CASCADE)
 	quantity = models.PositiveIntegerField()
 	order_date = models.DateTimeField(auto_now_add=True)
+	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
 
 	def __str__(self):
 		return f"Order #{self.id} by {self.buyer.username}"
+
+class Wishlist(models.Model):
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlist')
+	product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='wishlisted_by')
+	added_date = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		unique_together = ('user', 'product')
+
+	def __str__(self):
+		return f"{self.user.username} - {self.product.name}"
+
+class Review(models.Model):
+	STAR_CHOICES = [
+		(1, '1 Star'),
+		(2, '2 Stars'),
+		(3, '3 Stars'),
+		(4, '4 Stars'),
+		(5, '5 Stars'),
+	]
+	buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+	product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+	rating = models.IntegerField(choices=STAR_CHOICES)
+	comment = models.TextField(blank=True, null=True)
+	created_date = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		unique_together = ('buyer', 'product')
+
+	def __str__(self):
+		return f"{self.buyer.username} - {self.product.name} ({self.rating} stars)"
+
+class Notification(models.Model):
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+	message = models.TextField()
+	order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
+	is_read = models.BooleanField(default=False)
+	created_date = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ['-created_date']
+
+	def __str__(self):
+		return f"Notification for {self.user.username} - {'Read' if self.is_read else 'Unread'}"

@@ -14,4 +14,9 @@ urlpatterns = [
     path('farmer_products/', views.farmer_products, name='farmer_products'),
     path('add_product/', views.add_product, name='add_product'),
     path('order_history/', views.order_history, name='order_history'),
+    path('toggle_wishlist/<int:product_id>/', views.toggle_wishlist, name='toggle_wishlist'),
+    path('submit_review/<int:product_id>/', views.submit_review, name='submit_review'),
+    path('notifications/', views.notifications, name='notifications'),
+    path('get_notification_count/', views.get_notification_count, name='get_notification_count'),
+    path('update_order_status/<int:order_id>/', views.update_order_status, name='update_order_status'),
 ]
