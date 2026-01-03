@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Shopping Cart</h2>
+
+{% if cart_items %}
+{% csrf_token %}
+<div class="cart-container">
+    <div class="cart-items">
+        {% for item in cart_items %}
+        <div class="cart-item" data-cart-id="{{ item.id }}">
+            <div class="cart-item-image">
+                {% if item.product.image %}
+                <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}">
+                {% else %}
+                <div class="no-image">No Image</div>
+                {% endif %}
+            </div>
+            <div class="cart-item-details">
+                <h4>{{ item.product.name }}</h4>
+                <p class="cart-item-farmer">Sold by: {{ item.product.farmer.username }}</p>
+                <p class="cart-item-price">₹{{ item.product.price }} each</p>
+                <p class="cart-item-stock">Stock: {{ item.product.quantity }} available</p>
+            </div>
+            <div class="cart-item-quantity">
+                <label>Quantity:</label>
+                <input type="number" class="quantity-input-cart" data-cart-id="{{ item.id }}" 
+                       value="{{ item.quantity }}" min="1" max="{{ item.product.quantity }}">
+                <button class="btn-update-quantity" data-cart-id="{{ item.id }}">Update</button>
+            </div>
+            <div class="cart-item-total">
+                <p class="item-total" data-cart-id="{{ item.id }}">₹{{ item.get_total_price }}</p>
+            </div>
+            <div class="cart-item-remove">
+                <button class="btn-remove" data-cart-id="{{ item.id }}">🗑️ Remove</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="cart-summary">
+        <h3>Order Summary</h3>
+        <div class="summary-row">
+            <span>Total Items:</span>
+            <span id="totalItems">{{ total_items }}</span>
+        </div>
+        <div class="summary-row subtotal-row">
+            <span>Subtotal:</span>
+            <span id="subtotal">₹{{ subtotal }}</span>
+        </div>
+        <a href="{% url 'checkout' %}" class="btn-checkout">Proceed to Checkout</a>
+        <a href="{% url 'buyer_dashboard' %}" class="btn-continue">Continue Shopping</a>
+    </div>
+</div>
+
+<script>
+// Get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+// Update quantity
+document.querySelectorAll('.btn-update-quantity').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const cartId = this.dataset.cartId;
+        const quantityInput = document.querySelector(`.quantity-input-cart[data-cart-id="${cartId}"]`);
+        const quantity = quantityInput.value;
+        
+        fetch(`/update_cart/${cartId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `quantity=${quantity}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update item total
+                document.querySelector(`.item-total[data-cart-id="${cartId}"]`).textContent = `₹${data.item_total}`;
+                // Update subtotal
+                document.getElementById('subtotal').textContent = `₹${data.subtotal}`;
+                alert('Cart updated successfully!');
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+});
+
+// Remove item
+document.querySelectorAll('.btn-remove').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (!confirm('Remove this item from cart?')) return;
+        
+        const cartId = this.dataset.cartId;
+        
+        fetch(`/remove_from_cart/${cartId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove item from DOM
+                document.querySelector(`.cart-item[data-cart-id="${cartId}"]`).remove();
+                // Update subtotal
+                document.getElementById('subtotal').textContent = `₹${data.subtotal}`;
+                // Update cart badge
+                updateCartCount();
+                
+                // Check if cart is empty
+                if (data.cart_count === 0) {
+                    location.reload();
+                }
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+});
+</script>
+
+{% else %}
+<div class="empty-cart">
+    <p>Your cart is empty</p>
+    <a href="{% url 'buyer_dashboard' %}" class="btn-continue">Start Shopping</a>
+</div>
+{% endif %}
+
+{% endblock %}

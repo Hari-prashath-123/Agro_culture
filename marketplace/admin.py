@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, Order, UserProfile, Wishlist, Review, Notification
+from .models import Product, Order, UserProfile, Wishlist, Review, Notification, Cart
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
@@ -27,3 +27,8 @@ class NotificationAdmin(admin.ModelAdmin):
 	list_display = ('user', 'message', 'is_read', 'created_date')
 	list_filter = ('is_read', 'created_date')
 	search_fields = ('user__username', 'message')
+
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+	list_display = ('user', 'product', 'quantity', 'added_date')
+	search_fields = ('user__username', 'product__name')

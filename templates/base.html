@@ -16,6 +16,14 @@
                 {% if user.userprofile.role == 'Admin' %}
                     <li><a href="{% url 'admin_summary' %}">Management Dashboard</a></li>
                 {% endif %}
+                {% if user.userprofile.role == 'Buyer' %}
+                    <li class="cart-container">
+                        <a href="{% url 'view_cart' %}" class="cart-icon">
+                            🛒
+                            <span class="cart-badge" id="cartBadge" style="display:none;"></span>
+                        </a>
+                    </li>
+                {% endif %}
                 <li class="notification-container">
                     <a href="{% url 'notifications' %}" class="notification-bell">
                         🔔
@@ -56,6 +64,28 @@
     
     // Update count every 30 seconds
     setInterval(updateNotificationCount, 30000);
+    
+    // Check for cart count (buyers only)
+    function updateCartCount() {
+        fetch('/get_cart_count/')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById('cartBadge');
+                if (badge && data.cart_count > 0) {
+                    badge.textContent = data.cart_count;
+                    badge.style.display = 'block';
+                } else if (badge) {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+    
+    // Update cart count on page load
+    const cartBadge = document.getElementById('cartBadge');
+    if (cartBadge) {
+        updateCartCount();
+    }
     </script>
     {% endif %}
 </body>

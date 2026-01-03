@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Checkout</h2>
+
+<div class="checkout-container">
+    <div class="checkout-items">
+        <h3>Order Review</h3>
+        {% for item in cart_items %}
+        <div class="checkout-item">
+            <div class="checkout-item-details">
+                <h4>{{ item.product.name }}</h4>
+                <p>Farmer: {{ item.product.farmer.username }}</p>
+                <p>Price: ₹{{ item.product.price }} × {{ item.quantity }}</p>
+                <p class="checkout-item-total">Total: ₹{{ item.get_total_price }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="checkout-summary">
+        <h3>Order Total</h3>
+        <div class="summary-row">
+            <span>Subtotal:</span>
+            <span>₹{{ subtotal }}</span>
+        </div>
+        <div class="summary-row total-row">
+            <span>Total:</span>
+            <span>₹{{ subtotal }}</span>
+        </div>
+        
+        <form method="post" class="checkout-form">
+            {% csrf_token %}
+            <button type="submit" class="btn-place-order">Place Order</button>
+        </form>
+        <a href="{% url 'view_cart' %}" class="btn-back">Back to Cart</a>
+    </div>
+</div>
+
+{% endblock %}

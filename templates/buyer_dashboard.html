@@ -67,12 +67,21 @@
         {% if product.image %}
         <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
         {% endif %}
-        <form method="post" class="buy-form">
-            {% csrf_token %}
-            <input type="hidden" name="buy_product_id" value="{{ product.id }}">
-            <input type="number" name="quantity" min="1" max="{{ product.quantity }}" value="1" style="width:60px;">
-            <button type="submit" {% if product.quantity == 0 %}disabled{% endif %}>Buy Now</button>
-        </form>
+        <div class="product-actions">
+            <form class="add-to-cart-form" data-product-id="{{ product.id }}">
+                {% csrf_token %}
+                <input type="number" name="quantity" min="1" max="{{ product.quantity }}" value="1" class="quantity-input">
+                <button type="submit" class="btn-add-cart" {% if product.quantity == 0 %}disabled{% endif %}>
+                    🛒 Add to Cart
+                </button>
+            </form>
+            <form method="post" class="buy-form">
+                {% csrf_token %}
+                <input type="hidden" name="buy_product_id" value="{{ product.id }}">
+                <input type="number" name="quantity" min="1" max="{{ product.quantity }}" value="1" style="width:60px;">
+                <button type="submit" {% if product.quantity == 0 %}disabled{% endif %}>Buy Now</button>
+            </form>
+        </div>
         
         <!-- Review Section (only for purchased products) -->
         {% if product.id in purchased_product_ids %}
@@ -273,5 +282,37 @@ document.getElementById('reviewForm').addEventListener('submit', function(e) {
     })
     .catch(error => console.error('Error:', error));
 });
+
+// Handle Add to Cart
+document.querySelectorAll('.add-to-cart-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const productId = this.dataset.productId;
+        const formData = new FormData(this);
+        
+        fetch(`/add_to_cart/${productId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                // Update cart count in navbar
+                updateCartCount();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    });
+});
+
+// Update cart count on page load
+updateCartCount();
 </script>
 {% endblock %}

@@ -21,4 +21,10 @@ urlpatterns = [
     path('update_order_status/<int:order_id>/', views.update_order_status, name='update_order_status'),
     path('admin_delete_user/<int:user_id>/', views.admin_delete_user, name='admin_delete_user'),
     path('admin_delete_product/<int:product_id>/', views.admin_delete_product, name='admin_delete_product'),
+    path('add_to_cart/<int:product_id>/', views.add_to_cart, name='add_to_cart'),
+    path('view_cart/', views.view_cart, name='view_cart'),
+    path('update_cart/<int:cart_id>/', views.update_cart, name='update_cart'),
+    path('remove_from_cart/<int:cart_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('get_cart_count/', views.get_cart_count, name='get_cart_count'),
+    path('checkout/', views.checkout, name='checkout'),
 ]

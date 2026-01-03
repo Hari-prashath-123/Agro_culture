@@ -114,3 +114,18 @@ class Notification(models.Model):
 
 	def __str__(self):
 		return f"Notification for {self.user.username} - {'Read' if self.is_read else 'Unread'}"
+
+class Cart(models.Model):
+	user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='cart_items')
+	product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='in_carts')
+	quantity = models.PositiveIntegerField(default=1)
+	added_date = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		unique_together = ('user', 'product')
+
+	def __str__(self):
+		return f"{self.user.username} - {self.product.name} ({self.quantity})"
+
+	def get_total_price(self):
+		return self.product.price * self.quantity

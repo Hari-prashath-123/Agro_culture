@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.db.models import Q, Sum, Avg
 from django.http import JsonResponse
 from .forms import LoginForm, RegistrationForm
-from .models import UserProfile, Product, Order, Wishlist, Review, Notification
+from .models import UserProfile, Product, Order, Wishlist, Review, Notification, Cart
 from .product_form import ProductForm
 
 @login_required
@@ -429,3 +429,191 @@ def admin_delete_product(request, product_id):
 			messages.error(request, 'Product not found.')
 	
 	return redirect('admin_summary')
+
+@login_required
+def add_to_cart(request, product_id):
+	if request.method == 'POST':
+		user = request.user
+		if not hasattr(user, 'userprofile') or user.userprofile.role != 'Buyer':
+			return JsonResponse({'success': False, 'message': 'Only buyers can add to cart'}, status=403)
+		
+		try:
+			product = Product.objects.get(id=product_id)
+			quantity = int(request.POST.get('quantity', 1))
+			
+			if quantity <= 0:
+				return JsonResponse({'success': False, 'message': 'Invalid quantity'}, status=400)
+			
+			if quantity > product.quantity:
+				return JsonResponse({'success': False, 'message': f'Only {product.quantity} items available'}, status=400)
+			
+			# Check if item already in cart
+			cart_item, created = Cart.objects.get_or_create(
+				user=user,
+				product=product,
+				defaults={'quantity': quantity}
+			)
+			
+			if not created:
+				# Update quantity if already in cart
+				new_quantity = cart_item.quantity + quantity
+				if new_quantity > product.quantity:
+					return JsonResponse({'success': False, 'message': f'Cannot add more. Only {product.quantity} items available'}, status=400)
+				cart_item.quantity = new_quantity
+				cart_item.save()
+			
+			# Get cart count
+			cart_count = Cart.objects.filter(user=user).count()
+			
+			return JsonResponse({
+				'success': True,
+				'message': 'Added to cart successfully',
+				'cart_count': cart_count
+			})
+		
+		except Product.DoesNotExist:
+			return JsonResponse({'success': False, 'message': 'Product not found'}, status=404)
+		except Exception as e:
+			return JsonResponse({'success': False, 'message': str(e)}, status=500)
+	
+	return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+@login_required
+def view_cart(request):
+	user = request.user
+	if not hasattr(user, 'userprofile') or user.userprofile.role != 'Buyer':
+		messages.error(request, 'Access denied. Only Buyers can view cart.')
+		return redirect('login')
+	
+	cart_items = Cart.objects.filter(user=user).select_related('product')
+	
+	# Calculate totals
+	subtotal = sum(item.get_total_price() for item in cart_items)
+	total_items = sum(item.quantity for item in cart_items)
+	
+	return render(request, 'cart.html', {
+		'cart_items': cart_items,
+		'subtotal': subtotal,
+		'total_items': total_items,
+	})
+
+@login_required
+def update_cart(request, cart_id):
+	if request.method == 'POST':
+		user = request.user
+		try:
+			cart_item = Cart.objects.get(id=cart_id, user=user)
+			quantity = int(request.POST.get('quantity', 1))
+			
+			if quantity <= 0:
+				return JsonResponse({'success': False, 'message': 'Invalid quantity'}, status=400)
+			
+			if quantity > cart_item.product.quantity:
+				return JsonResponse({'success': False, 'message': f'Only {cart_item.product.quantity} items available'}, status=400)
+			
+			cart_item.quantity = quantity
+			cart_item.save()
+			
+			# Recalculate totals
+			cart_items = Cart.objects.filter(user=user)
+			subtotal = sum(item.get_total_price() for item in cart_items)
+			item_total = cart_item.get_total_price()
+			
+			return JsonResponse({
+				'success': True,
+				'item_total': float(item_total),
+				'subtotal': float(subtotal)
+			})
+		
+		except Cart.DoesNotExist:
+			return JsonResponse({'success': False, 'message': 'Cart item not found'}, status=404)
+		except Exception as e:
+			return JsonResponse({'success': False, 'message': str(e)}, status=500)
+	
+	return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+@login_required
+def remove_from_cart(request, cart_id):
+	if request.method == 'POST':
+		user = request.user
+		try:
+			cart_item = Cart.objects.get(id=cart_id, user=user)
+			cart_item.delete()
+			
+			# Get updated cart count and subtotal
+			cart_items = Cart.objects.filter(user=user)
+			cart_count = cart_items.count()
+			subtotal = sum(item.get_total_price() for item in cart_items)
+			
+			return JsonResponse({
+				'success': True,
+				'cart_count': cart_count,
+				'subtotal': float(subtotal)
+			})
+		
+		except Cart.DoesNotExist:
+			return JsonResponse({'success': False, 'message': 'Cart item not found'}, status=404)
+	
+	return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+@login_required
+def get_cart_count(request):
+	user = request.user
+	cart_count = Cart.objects.filter(user=user).count()
+	return JsonResponse({'cart_count': cart_count})
+
+@login_required
+def checkout(request):
+	user = request.user
+	if not hasattr(user, 'userprofile') or user.userprofile.role != 'Buyer':
+		messages.error(request, 'Access denied. Only Buyers can checkout.')
+		return redirect('login')
+	
+	if request.method == 'POST':
+		cart_items = Cart.objects.filter(user=user).select_related('product')
+		
+		if not cart_items.exists():
+			messages.error(request, 'Your cart is empty.')
+			return redirect('view_cart')
+		
+		# Create orders for all items in cart
+		orders_created = []
+		for cart_item in cart_items:
+			# Check if sufficient stock
+			if cart_item.quantity > cart_item.product.quantity:
+				messages.error(request, f'Insufficient stock for {cart_item.product.name}')
+				continue
+			
+			# Create order
+			order = Order.objects.create(
+				buyer=user,
+				product=cart_item.product,
+				quantity=cart_item.quantity
+			)
+			orders_created.append(order)
+			
+			# Reduce product quantity
+			cart_item.product.quantity -= cart_item.quantity
+			cart_item.product.save()
+			
+			# Create notification for farmer
+			Notification.objects.create(
+				user=cart_item.product.farmer,
+				message=f"New order #{order.id} for {cart_item.product.name} ({cart_item.quantity} units)",
+				order=order
+			)
+		
+		# Clear cart
+		cart_items.delete()
+		
+		messages.success(request, f'{len(orders_created)} order(s) placed successfully!')
+		return redirect('order_history')
+	
+	# GET request - show checkout confirmation
+	cart_items = Cart.objects.filter(user=user).select_related('product')
+	subtotal = sum(item.get_total_price() for item in cart_items)
+	
+	return render(request, 'checkout.html', {
+		'cart_items': cart_items,
+		'subtotal': subtotal,
+	})
