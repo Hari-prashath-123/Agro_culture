@@ -6,7 +6,10 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="/" class="navbar-brand">Agro Culture</a>
+        <a href="/" class="navbar-brand">
+            <img src="/static/images/logo.jpg" alt="Agro Culture" class="navbar-logo"> Agro Culture
+        </a>
+        
         <ul class="navbar-menu">
             {% if user.is_authenticated %}
                 {% if user.userprofile.role == 'Admin' %}
