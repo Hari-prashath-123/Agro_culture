@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block content %}
+<h2>Your Products</h2>
+<div class="dashboard">
+    <a href="{% url 'add_product' %}" class="file-upload-btn" style="margin-bottom:20px;display:inline-block;">Add New Product</a>
+    <div class="product-cards">
+        {% for product in products %}
+        <div class="card">
+            <h4>{{ product.name }}</h4>
+            <p>Category: {{ product.category }}</p>
+            <p>Price: ₹{{ product.price }}</p>
+            <p>Stock: {{ product.quantity }}</p>
+            <p>Total Sales: {{ total_sales|get_item:product.id }}</p>
+            {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
+            {% endif %}
+        </div>
+        {% empty %}
+        <p>No products uploaded yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

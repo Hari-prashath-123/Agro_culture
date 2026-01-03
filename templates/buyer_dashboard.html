@@ -1,16 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
+<a href="{% url 'order_history' %}" class="file-upload-btn" style="margin-bottom:20px;display:inline-block;">View Your Order History</a>
 <h2>Marketplace</h2>
 <form method="get" class="search-bar">
     <input type="text" name="q" placeholder="Search products by name..." value="{{ query }}">
     <button type="submit">Search</button>
+    {% if query %}
+        <a href="?" class="file-upload-btn" style="margin-left:10px;">Clear</a>
+    {% endif %}
 </form>
 <div class="marketplace-grid">
     {% for product in products %}
     <div class="market-card">
         <h4>{{ product.name }}</h4>
         <p>Category: {{ product.category }}</p>
-        <p>Price: ${{ product.price }}</p>
+        <p>Price: ₹{{ product.price }}</p>
         <p>Stock: {{ product.quantity }}</p>
         <p>Farmer: {{ product.farmer.username }}</p>
         {% if product.image %}

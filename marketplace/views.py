@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum
@@ -19,10 +19,15 @@ def admin_summary(request):
 	farmers = UserProfile.objects.filter(role='Farmer')
 	buyers = UserProfile.objects.filter(role='Buyer')
 
+	# Count products by category
+	from django.db.models import Count
+	category_counts = dict(Product.objects.values_list('category').annotate(count=Count('id')))
+
 	return render(request, 'admin_summary.html', {
 		'total_transactions': total_transactions,
 		'farmers': farmers,
 		'buyers': buyers,
+		'category_counts': category_counts,
 	})
 from django.db.models import Q
 
@@ -60,19 +65,40 @@ def buyer_dashboard(request):
 		'query': query,
 	})
 
+# Buyer Order History View
 @login_required
-def farmer_dashboard(request):
+def order_history(request):
 	user = request.user
-	# Ensure only farmers can access
+	if not hasattr(user, 'userprofile') or user.userprofile.role != 'Buyer':
+		messages.error(request, 'Access denied. Only Buyers can view this page.')
+		return redirect('login')
+	order_history = Order.objects.filter(buyer=user).select_related('product').order_by('-order_date')
+	return render(request, 'order_history.html', {'order_history': order_history})
+
+
+# Farmer Products List View
+@login_required
+def farmer_products(request):
+	user = request.user
 	if not hasattr(user, 'userprofile') or user.userprofile.role != 'Farmer':
 		messages.error(request, 'Access denied. Only Farmers can view this page.')
 		return redirect('login')
-
 	products = Product.objects.filter(farmer=user)
 	total_sales = {}
 	for product in products:
 		total_sales[product.id] = Order.objects.filter(product=product).aggregate(Sum('quantity'))['quantity__sum'] or 0
+	return render(request, 'farmer_products.html', {
+		'products': products,
+		'total_sales': total_sales,
+	})
 
+# Add New Product View
+@login_required
+def add_product(request):
+	user = request.user
+	if not hasattr(user, 'userprofile') or user.userprofile.role != 'Farmer':
+		messages.error(request, 'Access denied. Only Farmers can view this page.')
+		return redirect('login')
 	if request.method == 'POST':
 		form = ProductForm(request.POST, request.FILES)
 		if form.is_valid():
@@ -80,15 +106,10 @@ def farmer_dashboard(request):
 			new_product.farmer = user
 			new_product.save()
 			messages.success(request, 'Product added successfully!')
-			return redirect('farmer_dashboard')
+			return redirect('farmer_products')
 	else:
 		form = ProductForm()
-
-	return render(request, 'farmer_dashboard.html', {
-		'products': products,
-		'form': form,
-		'total_sales': total_sales,
-	})
+	return render(request, 'add_product.html', {'form': form})
 
 def unified_login(request):
 	if request.method == 'POST':
@@ -139,4 +160,8 @@ def home(request):
 				return redirect('buyer_dashboard')
 			elif role == 'Admin':
 				return redirect('admin_summary')
+	return redirect('login')
+
+def logout_view(request):
+	logout(request)
 	return redirect('login')

@@ -20,8 +20,30 @@ def validate_farmer(user):
 		raise ValidationError('User must have Farmer role to be linked to a Product.')
 
 class Product(models.Model):
+	CATEGORY_CHOICES = [
+		('Vegetables - Leafy', 'Vegetables - Leafy'),
+		('Vegetables - Root', 'Vegetables - Root'),
+		('Vegetables - Marrow', 'Vegetables - Marrow'),
+		('Fruits - Seasonal', 'Fruits - Seasonal'),
+		('Fruits - Tropical', 'Fruits - Tropical'),
+		('Fruits - Berries', 'Fruits - Berries'),
+		('Grains & Cereals - Rice', 'Grains & Cereals - Rice'),
+		('Grains & Cereals - Wheat', 'Grains & Cereals - Wheat'),
+		('Grains & Cereals - Corn', 'Grains & Cereals - Corn'),
+		('Pulses & Legumes - Lentils', 'Pulses & Legumes - Lentils'),
+		('Pulses & Legumes - Beans', 'Pulses & Legumes - Beans'),
+		('Pulses & Legumes - Peas', 'Pulses & Legumes - Peas'),
+		('Dairy Products - Milk', 'Dairy Products - Milk'),
+		('Dairy Products - Butter', 'Dairy Products - Butter'),
+		('Dairy Products - Cheese', 'Dairy Products - Cheese'),
+		('Livestock - Poultry', 'Livestock - Poultry'),
+		('Livestock - Cattle', 'Livestock - Cattle'),
+		('Livestock - Sheep', 'Livestock - Sheep'),
+		('Spices & Herbs', 'Spices & Herbs'),
+	]
+	
 	name = models.CharField(max_length=100)
-	category = models.CharField(max_length=50)
+	category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
 	price = models.DecimalField(max_digits=10, decimal_places=2)
 	quantity = models.PositiveIntegerField()
 	image = models.ImageField(upload_to='product_images/', blank=True, null=True)

@@ -1,26 +1,8 @@
 {% extends 'base.html' %}
-{% load custom_filters %}
 {% block content %}
-<h2>Farmer Dashboard</h2>
+<h2>Add New Product</h2>
 <div class="dashboard">
-    <h3>Your Products</h3>
-    <div class="product-cards">
-        {% for product in products %}
-        <div class="card">
-            <h4>{{ product.name }}</h4>
-            <p>Category: {{ product.category }}</p>
-            <p>Price: ₹{{ product.price }}</p>
-            <p>Stock: {{ product.quantity }}</p>
-            <p>Total Sales: {{ total_sales|get_item:product.id }}</p>
-            {% if product.image %}
-            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
-            {% endif %}
-        </div>
-        {% empty %}
-        <p>No products uploaded yet.</p>
-        {% endfor %}
-    </div>
-    <h3>Add New Product</h3>
+    <a href="{% url 'farmer_products' %}" class="file-upload-btn" style="margin-bottom:20px;display:inline-block;">&larr; Back to Your Products</a>
     <form method="post" enctype="multipart/form-data" id="productForm">
         {% csrf_token %}
         <p>
@@ -57,52 +39,36 @@
         const dragDropArea = document.getElementById('dragDropArea');
         const fileInput = document.getElementById('id_image');
         const imagePreview = document.getElementById('imagePreview');
-        
-        // Hide the default file input
         fileInput.style.display = 'none';
-        
-        // Prevent default drag behaviors
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dragDropArea.addEventListener(eventName, preventDefaults, false);
             document.body.addEventListener(eventName, preventDefaults, false);
         });
-        
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
         }
-        
-        // Highlight drop area when item is dragged over
         ['dragenter', 'dragover'].forEach(eventName => {
             dragDropArea.addEventListener(eventName, highlight, false);
         });
-        
         ['dragleave', 'drop'].forEach(eventName => {
             dragDropArea.addEventListener(eventName, unhighlight, false);
         });
-        
         function highlight(e) {
             dragDropArea.classList.add('highlight');
         }
-        
         function unhighlight(e) {
             dragDropArea.classList.remove('highlight');
         }
-        
-        // Handle dropped files
         dragDropArea.addEventListener('drop', handleDrop, false);
-        
         function handleDrop(e) {
             const dt = e.dataTransfer;
             const files = dt.files;
             handleFiles(files);
         }
-        
-        // Handle file selection via browse button
         fileInput.addEventListener('change', function(e) {
             handleFiles(this.files);
         });
-        
         function handleFiles(files) {
             if (files.length > 0) {
                 const file = files[0];
@@ -110,7 +76,6 @@
                 previewImage(file);
             }
         }
-        
         function previewImage(file) {
             const reader = new FileReader();
             reader.onload = function(e) {
