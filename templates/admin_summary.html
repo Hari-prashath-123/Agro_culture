@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Admin Summary</h2>
+<div class="admin-summary">
+    <div class="summary-card">
+        <h3>Total Transactions</h3>
+        <p>{{ total_transactions }}</p>
+    </div>
+    <div class="summary-list">
+        <h3>Registered Farmers</h3>
+        <ul>
+        {% for farmer in farmers %}
+            <li>{{ farmer.user.username }} ({{ farmer.user.email }})</li>
+        {% empty %}
+            <li>No farmers registered.</li>
+        {% endfor %}
+        </ul>
+        <h3>Registered Buyers</h3>
+        <ul>
+        {% for buyer in buyers %}
+            <li>{{ buyer.user.username }} ({{ buyer.user.email }})</li>
+        {% empty %}
+            <li>No buyers registered.</li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

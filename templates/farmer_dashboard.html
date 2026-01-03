@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Farmer Dashboard</h2>
+<div class="dashboard">
+    <h3>Your Products</h3>
+    <div class="product-cards">
+        {% for product in products %}
+        <div class="card">
+            <h4>{{ product.name }}</h4>
+            <p>Category: {{ product.category }}</p>
+            <p>Price: ${{ product.price }}</p>
+            <p>Stock: {{ product.quantity }}</p>
+            <p>Total Sales: {{ total_sales|get_item:product.id }}</p>
+            {% if product.image %}
+            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
+            {% endif %}
+        </div>
+        {% empty %}
+        <p>No products uploaded yet.</p>
+        {% endfor %}
+    </div>
+    <h3>Add New Product</h3>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Add Product</button>
+    </form>
+    {% if messages %}
+        <ul>
+        {% for message in messages %}
+            <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</div>
+{% endblock %}

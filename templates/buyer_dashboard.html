@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Marketplace</h2>
+<form method="get" class="search-bar">
+    <input type="text" name="q" placeholder="Search products by name..." value="{{ query }}">
+    <button type="submit">Search</button>
+</form>
+<div class="marketplace-grid">
+    {% for product in products %}
+    <div class="market-card">
+        <h4>{{ product.name }}</h4>
+        <p>Category: {{ product.category }}</p>
+        <p>Price: ${{ product.price }}</p>
+        <p>Stock: {{ product.quantity }}</p>
+        <p>Farmer: {{ product.farmer.username }}</p>
+        {% if product.image %}
+        <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img">
+        {% endif %}
+        <form method="post" class="buy-form">
+            {% csrf_token %}
+            <input type="hidden" name="buy_product_id" value="{{ product.id }}">
+            <input type="number" name="quantity" min="1" max="{{ product.quantity }}" value="1" style="width:60px;">
+            <button type="submit" {% if product.quantity == 0 %}disabled{% endif %}>Buy Now</button>
+        </form>
+    </div>
+    {% empty %}
+    <p>No products available.</p>
+    {% endfor %}
+</div>
+{% if messages %}
+    <ul>
+    {% for message in messages %}
+        <li>{{ message }}</li>
+    {% endfor %}
+    </ul>
+{% endif %}
+{% endblock %}
