@@ -16,9 +16,18 @@ def admin_summary(request):
 		messages.error(request, 'Access denied. Only Admins can view this page.')
 		return redirect('login')
 
-	total_transactions = Order.objects.count()
-	farmers = UserProfile.objects.filter(role='Farmer')
-	buyers = UserProfile.objects.filter(role='Buyer')
+	# Fetch all products with farmer data pre-fetched
+	products = Product.objects.select_related('farmer').all()
+	
+	# Fetch all orders with buyer and product data pre-fetched
+	orders = Order.objects.select_related('buyer', 'product').all()
+	
+	# Get all users with their roles
+	users = UserProfile.objects.all().select_related('user')
+	farmers = users.filter(role='Farmer')
+	buyers = users.filter(role='Buyer')
+	
+	total_transactions = orders.count()
 
 	# Count products by category
 	from django.db.models import Count
@@ -29,6 +38,9 @@ def admin_summary(request):
 		'farmers': farmers,
 		'buyers': buyers,
 		'category_counts': category_counts,
+		'products': products,
+		'orders': orders,
+		'users': users,
 	})
 from django.db.models import Q
 
@@ -372,3 +384,48 @@ def update_order_status(request, order_id):
 			return JsonResponse({'success': False, 'message': 'Order not found or access denied'}, status=404)
 	
 	return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+@login_required
+def admin_delete_user(request, user_id):
+	user = request.user
+	# Ensure only admins can access
+	if not hasattr(user, 'userprofile') or user.userprofile.role != 'Admin':
+		messages.error(request, 'Access denied. Only Admins can delete users.')
+		return redirect('login')
+	
+	if request.method == 'POST':
+		try:
+			user_profile = UserProfile.objects.get(id=user_id)
+			# Prevent admin from deleting themselves
+			if user_profile.user == user:
+				messages.error(request, 'You cannot delete your own account.')
+				return redirect('admin_summary')
+			
+			# Delete the associated User object (this will cascade delete the UserProfile)
+			user_to_delete = user_profile.user
+			username = user_to_delete.username
+			user_to_delete.delete()
+			messages.success(request, f'User "{username}" has been deleted successfully.')
+		except UserProfile.DoesNotExist:
+			messages.error(request, 'User not found.')
+	
+	return redirect('admin_summary')
+
+@login_required
+def admin_delete_product(request, product_id):
+	user = request.user
+	# Ensure only admins can access
+	if not hasattr(user, 'userprofile') or user.userprofile.role != 'Admin':
+		messages.error(request, 'Access denied. Only Admins can delete products.')
+		return redirect('login')
+	
+	if request.method == 'POST':
+		try:
+			product = Product.objects.get(id=product_id)
+			product_name = product.name
+			product.delete()
+			messages.success(request, f'Product "{product_name}" has been deleted successfully.')
+		except Product.DoesNotExist:
+			messages.error(request, 'Product not found.')
+	
+	return redirect('admin_summary')

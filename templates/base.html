@@ -9,6 +9,9 @@
         <a href="/" class="navbar-brand">Agro Culture</a>
         <ul class="navbar-menu">
             {% if user.is_authenticated %}
+                {% if user.userprofile.role == 'Admin' %}
+                    <li><a href="{% url 'admin_summary' %}">Management Dashboard</a></li>
+                {% endif %}
                 <li class="notification-container">
                     <a href="{% url 'notifications' %}" class="notification-bell">
                         🔔

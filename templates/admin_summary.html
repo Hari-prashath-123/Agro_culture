@@ -1,28 +1,147 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Admin Summary</h2>
-<div class="admin-summary">
-    <div class="summary-card">
-        <h3>Total Transactions</h3>
-        <p>{{ total_transactions }}</p>
-    </div>
-    <div class="summary-list">
-        <h3>Registered Farmers</h3>
-        <ul>
-        {% for farmer in farmers %}
-            <li>{{ farmer.user.username }} ({{ farmer.user.email }})</li>
-        {% empty %}
-            <li>No farmers registered.</li>
-        {% endfor %}
-        </ul>
-        <h3>Registered Buyers</h3>
-        <ul>
-        {% for buyer in buyers %}
-            <li>{{ buyer.user.username }} ({{ buyer.user.email }})</li>
-        {% empty %}
-            <li>No buyers registered.</li>
-        {% endfor %}
-        </ul>
+<h2>Admin Dashboard</h2>
+
+<!-- Summary Cards Section -->
+<div class="dashboard-section">
+    <h3>Overview</h3>
+    <div class="summary-cards">
+        <div class="summary-card">
+            <h4>Total Transactions</h4>
+            <p class="summary-value">{{ total_transactions }}</p>
+        </div>
+        <div class="summary-card">
+            <h4>Total Users</h4>
+            <p class="summary-value">{{ users.count }}</p>
+        </div>
+        <div class="summary-card">
+            <h4>Total Products</h4>
+            <p class="summary-value">{{ products.count }}</p>
+        </div>
     </div>
 </div>
+
+<!-- User Management Table -->
+<div class="dashboard-section">
+    <h3>User Management</h3>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Date Joined</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for userprofile in users %}
+                <tr>
+                    <td>{{ userprofile.user.id }}</td>
+                    <td>{{ userprofile.user.username }}</td>
+                    <td>{{ userprofile.user.email }}</td>
+                    <td><span class="role-badge role-{{ userprofile.role|lower }}">{{ userprofile.role }}</span></td>
+                    <td>{{ userprofile.user.date_joined|date:"M d, Y" }}</td>
+                    <td>
+                        <form method="post" action="{% url 'admin_delete_user' userprofile.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete user {{ userprofile.user.username }}? This action cannot be undone.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-delete" title="Delete User">🗑️ Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;">No users found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Product Management Table -->
+<div class="dashboard-section">
+    <h3>Product Management</h3>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Product Name</th>
+                    <th>Farmer</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.id }}</td>
+                    <td>{{ product.name }}</td>
+                    <td>{{ product.farmer.username }}</td>
+                    <td>{{ product.category }}</td>
+                    <td>₹{{ product.price }}</td>
+                    <td>
+                        {% if product.quantity > 0 %}
+                            <span class="stock-badge stock-available">{{ product.quantity }}</span>
+                        {% else %}
+                            <span class="stock-badge stock-out">Out of Stock</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{% url 'admin_delete_product' product.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete product {{ product.name }}? This action cannot be undone.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-delete" title="Delete Product">🗑️ Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align:center;">No products found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Sales/Order History Table -->
+<div class="dashboard-section">
+    <h3>Sales & Order History</h3>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Buyer</th>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>#{{ order.id }}</td>
+                    <td>{{ order.buyer.username }}</td>
+                    <td>{{ order.product.name }}</td>
+                    <td>{{ order.quantity }}</td>
+                    <td><span class="order-status status-{{ order.status|lower }}">{{ order.status }}</span></td>
+                    <td>{{ order.order_date|date:"M d, Y - h:i A" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align:center;">No orders found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {% endblock %}

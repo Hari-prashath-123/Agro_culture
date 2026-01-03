@@ -19,4 +19,6 @@ urlpatterns = [
     path('notifications/', views.notifications, name='notifications'),
     path('get_notification_count/', views.get_notification_count, name='get_notification_count'),
     path('update_order_status/<int:order_id>/', views.update_order_status, name='update_order_status'),
+    path('admin_delete_user/<int:user_id>/', views.admin_delete_user, name='admin_delete_user'),
+    path('admin_delete_product/<int:product_id>/', views.admin_delete_product, name='admin_delete_product'),
 ]
